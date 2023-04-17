@@ -3,6 +3,7 @@ package ufrn.edu.br.aula.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -20,117 +21,146 @@ public class TarefaController {
         response.getWriter().println("Acesse o formulário de cadastro");
     }
 
+    @RequestMapping(method = RequestMethod.GET, value = "/index.html")
+    public void getLogin(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("logado") == null) {
+            // Redirecione para a página de login
+            response.sendRedirect("loginpage.html");
+        }
+    }
+
     @RequestMapping( method = RequestMethod.POST, value = "/cadastrar")
     public void cadastraTarefa(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        var t = new Tarefa();
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("logado") == null) {
+            // Redirecione para a página de login
+            response.sendRedirect("loginpage.html");
+        }else {
+            var t = new Tarefa();
+            response.setContentType("text/HTML");
+            var writer = response.getWriter();
 
-        response.setContentType("text/HTML");
-        var writer = response.getWriter();
+            try {
+                var texto = request.getParameter("texto");
+                var prioridade = Integer.parseInt(request.getParameter("prioridade"));
+                t.setTexto(texto);
+                t.setPrioridade(prioridade);
+                TarefaDAO.cadastrar(t);
 
-        try{
-            var texto = request.getParameter("texto");
-            var prioridade = Integer.parseInt(request.getParameter("prioridade"));
-            t.setTexto(texto);
-            t.setPrioridade(prioridade);
-            TarefaDAO.cadastrar(t);
-
-            writer.println("<html>" +
-                    "<body>"+
-                    "<h1> TAREFA CADASTRADA </h1>" +
-                    "<h1> Texto: " + t.getTexto() + "</h1>"+
-                    "<p> Prioridade: " + t.getPrioridade() + "</p>" +
-                    "<p> Data: " + new java.sql.Date(t.getDataCadastro().getTime()) + "</p>"+
-                    "<a href='cadastro.html'> VOLTAR </a>"+
-                    "</body>"+
-                    "</html>"
-            );
-        }catch (Exception e){
-            writer.println("<html>" +
-                    "<body>"+
-                    "<h1> CAMPOS NÃO PREENCHIDOS </h1>" +
-                    "<a href='cadastro.html'> VOLTAR </a>"+
-                    "</body>"+
-                    "</html>"
-            );
+                writer.println("<html>" +
+                        "<body>" +
+                        "<h1> TAREFA CADASTRADA </h1>" +
+                        "<h1> Texto: " + t.getTexto() + "</h1>" +
+                        "<p> Prioridade: " + t.getPrioridade() + "</p>" +
+                        "<p> Data: " + new java.sql.Date(t.getDataCadastro().getTime()) + "</p>" +
+                        "<a href='cadastro.html'> VOLTAR </a>" +
+                        "</body>" +
+                        "</html>"
+                );
+            } catch (Exception e) {
+                writer.println("<html>" +
+                        "<body>" +
+                        "<h1> CAMPOS NÃO PREENCHIDOS </h1>" +
+                        "<a href='cadastro.html'> VOLTAR </a>" +
+                        "</body>" +
+                        "</html>"
+                );
+            }
         }
     }
 
     @RequestMapping( value = "/buscar", method = RequestMethod.GET)
     public void buscarTarefas(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        var writer = response.getWriter();
-        writer.println("<html>" +
-                "<body>"
-        );
-        try{
-            var id = Integer.parseInt(request.getParameter("id"));
-            Tarefa t = TarefaDAO.buscarTarefa(id);
-            if(t == null){
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("logado") == null) {
+            // Redirecione para a página de login
+            response.sendRedirect("loginpage.html");
+        }else {
+            var writer = response.getWriter();
+            writer.println("<html>" +
+                    "<body>"
+            );
+            try {
+                var id = Integer.parseInt(request.getParameter("id"));
+                Tarefa t = TarefaDAO.buscarTarefa(id);
+                if (t == null) {
+                    writer.println(
+                            "<h1> TAREFA NÃO ENCONTRADA</h1>" +
+                                    "<a href='busca.html'> VOLTAR </a>"
+                    );
+                } else {
+                    writer.println(
+                            "<h1>" + t.getTexto() + "</h1>" +
+                                    "<p> ID: " + t.getId() + "</p>" +
+                                    "<p> Prioridade: " + t.getPrioridade() + "</p>" +
+                                    "<p> Data: " + /*new java.sql.Date(*/t.getDataCadastro()/*.getTime())*/ + "</p>" +
+                                    "<a href='busca.html'> VOLTAR </a>"
+                    );
+                }
+            } catch (Exception e) {
                 writer.println(
-                        "<h1> TAREFA NÃO ENCONTRADA</h1>"+
-                        "<a href='busca.html'> VOLTAR </a>"
-                );
-            }else{
-                writer.println(
-                        "<h1>" + t.getTexto() + "</h1>"+
-                        "<p> ID: " + t.getId() + "</p>" +
-                        "<p> Prioridade: " + t.getPrioridade() + "</p>" +
-                        "<p> Data: " + /*new java.sql.Date(*/t.getDataCadastro()/*.getTime())*/ + "</p>"+
-                        "<a href='busca.html'> VOLTAR </a>"
+                        "<h1> CAMPOS NÃO PREENCHIDOS </h1>" +
+                                "<a href='busca.html'> VOLTAR </a>"
                 );
             }
-        }catch (Exception e){
-            writer.println(
-                    "<h1> CAMPOS NÃO PREENCHIDOS </h1>" +
-                    "<a href='busca.html'> VOLTAR </a>"
+            writer.println("</body>" +
+                    "</html>"
             );
         }
-        writer.println("</body>"+
-                "</html>"
-        );
-
-
     }
     @RequestMapping( method = RequestMethod.GET, value = "/listar")
     public void listarTarefas(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        response.setContentType("text/HTML");
-        var tarefas = TarefaDAO.listar();
-        var writer = response.getWriter();
-        writer.println("<html>" +
-                "<body>"
-        );
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("logado") == null) {
+            // Redirecione para a página de login
+            response.sendRedirect("loginpage.html");
+        }else {
+            response.setContentType("text/HTML");
+            var tarefas = TarefaDAO.listar();
+            var writer = response.getWriter();
+            writer.println("<html>" +
+                    "<body>"
+            );
 
-        writer.println("<h1> LISTA DE TAREFAS </h1><a href='index.html'> VOLTAR </a>");
-        for (var t : tarefas) {
-            writer.println("<hr/> <h1>" + t.getTexto() + "</h1>"+
-                    "<p var='tarefaId'> ID: " + t.getId() + "</p>" +
-                    "<p> Prioridade: " + t.getPrioridade() + "</p>" +
-                    "<p> Data: " + t.getDataCadastro() + "</p> "+
-                    "<a href='editar?id="+t.getId()+"'>EDITAR</a> </br>"+
-                    "<a href='deletar?id="+t.getId()+"'>DELETAR</a>"
-                    );
+            writer.println("<h1> LISTA DE TAREFAS </h1><a href='index.html'> VOLTAR </a>");
+            for (var t : tarefas) {
+                writer.println("<hr/> <h1>" + t.getTexto() + "</h1>" +
+                        "<p var='tarefaId'> ID: " + t.getId() + "</p>" +
+                        "<p> Prioridade: " + t.getPrioridade() + "</p>" +
+                        "<p> Data: " + t.getDataCadastro() + "</p> " +
+                        "<a href='editar?id=" + t.getId() + "'>EDITAR</a> </br>" +
+                        "<a href='deletar?id=" + t.getId() + "'>DELETAR</a>"
+                );
+            }
+            writer.println("</body>" +
+                    "</html>"
+            );
         }
-        writer.println("</body>"+
-                "</html>"
-        );
     }
     @RequestMapping(method = RequestMethod.GET, value = "/editar")
     public void editarTarefa(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        var id = Integer.parseInt(request.getParameter("id"));
-        var t = TarefaDAO.buscarTarefa(id);
-        var writer = response.getWriter();
-
-        writer.println("<html>"+
-                "<body>" +
-                "<h1> EDITAR TAREFA </h1>" +
-                "<form action='atualizar' method='post'>" +
-                "<input type='hidden' name='id' value='"+t.getId()+"'>" +
-                "<input type='text' name='texto' value='"+ t.getTexto()+"'>" +
-                "<input type='number' name='prioridade' value='"+t.getPrioridade()+"'>" +
-                "<input type='hidden' name='dataCadastro' value='"+t.getDataCadastro()+"'>" +
-                "<button type='submit'>ATUALIZAR</button> <a href='listar'> VOLTAR </a>" +
-                "</form>" +
-                "</form>" +
-                "</html>");
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("logado") == null) {
+            // Redirecione para a página de login
+            response.sendRedirect("loginpage.html");
+        }else {
+            var id = Integer.parseInt(request.getParameter("id"));
+            var t = TarefaDAO.buscarTarefa(id);
+            var writer = response.getWriter();
+            writer.println("<html>" +
+                    "<body>" +
+                    "<h1> EDITAR TAREFA </h1>" +
+                    "<form action='atualizar' method='post'>" +
+                    "<input type='hidden' name='id' value='" + t.getId() + "'>" +
+                    "<input type='text' name='texto' value='" + t.getTexto() + "'>" +
+                    "<input type='number' name='prioridade' value='" + t.getPrioridade() + "'>" +
+                    "<input type='hidden' name='dataCadastro' value='" + t.getDataCadastro() + "'>" +
+                    "<button type='submit'>ATUALIZAR</button> <a href='listar'> VOLTAR </a>" +
+                    "</form>" +
+                    "</form>" +
+                    "</html>");
+        }
     }
     @RequestMapping(method = RequestMethod.POST, value = "/atualizar")
     public void atualizarTarefa(HttpServletRequest request, HttpServletResponse response) throws Exception {
@@ -142,26 +172,27 @@ public class TarefaController {
         var t = new Tarefa(texto, prioridade, dataCadastro, id);
         TarefaDAO.editarTarefa(t);
 
-        var writer = response.getWriter();
-        writer.println("<html>" +
-                "<body>"+
-                "<h1> TAREFA ATUALIZADA </h1>" +
-                "<a href='listar'> VOLTAR </a>" +
-                "</body>"+
-                "</html>");
+        response.sendRedirect("/listar");
     }
     @RequestMapping(method = RequestMethod.GET, value = "/deletar")
     public void deletarTarefa(HttpServletResponse response, HttpServletRequest request) throws IOException {
         var id = Integer.parseInt(request.getParameter("id"));
         TarefaDAO.excluirTarefa(id);
 
-        var writer = response.getWriter();
-        writer.println("<html>" +
-                "<body>"+
-                "<h1> TAREFA EXCLUIDA </h1>" +
-                "<a href='listar'> VOLTAR </a>" +
-                "</body>"+
-                "</html>");
+        response.sendRedirect("/listar");
+    }
+    @RequestMapping(method = RequestMethod.POST, value = "/doLogin")
+    public void doLogin(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        String login = request.getParameter("login");
+        String password = request.getParameter("password");
+
+        if(login.equals("wllc") && password.equals("123")){
+            HttpSession session = request.getSession();
+            session.setAttribute("logado", true);
+            response.sendRedirect("index.html");
+        }else{
+            response.sendRedirect("loginpage.html");
+        }
     }
 }
 
